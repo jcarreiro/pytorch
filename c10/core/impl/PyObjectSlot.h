@@ -86,7 +86,9 @@ struct C10_API PyObjectSlot {
   //
   // NB: this lives in header so that we can avoid actually creating the
   // c10::optional
-  c10::optional<PyObject*> check_pyobj(PyInterpreter* self_interpreter) const {
+  c10::optional<PyObject*> check_pyobj(
+      PyInterpreter* self_interpreter,
+      bool ignore_hermetic_tls = false) const {
     // Note [Memory ordering on Python interpreter tag]
     impl::PyInterpreter* interpreter =
         pyobj_interpreter_.load(std::memory_order_acquire);
@@ -99,7 +101,7 @@ struct C10_API PyObjectSlot {
       return c10::nullopt;
     } else if (interpreter == self_interpreter) {
       // NB: pyobj_ could still be null!
-      if (c10::impl::HermeticPyObjectTLS::get_state()) {
+      if (!ignore_hermetic_tls && c10::impl::HermeticPyObjectTLS::get_state()) {
         return c10::nullopt;
       } else {
         return c10::make_optional(_unchecked_untagged_pyobj());
