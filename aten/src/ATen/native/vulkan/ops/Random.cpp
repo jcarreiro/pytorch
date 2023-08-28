@@ -12,6 +12,12 @@ namespace ops {
 
 using namespace api::utils;
 
+#ifdef USE_VULKAN_FP16_INFERENCE
+constexpr float kEpsilon = 0.0009765625;
+#else
+constexpr float kEpsilon = 1.1920928955078125e-07;
+#endif
+
 Tensor& uniform_(
     Tensor& self,
     double from,
@@ -57,10 +63,23 @@ Tensor& uniform_(
   return self;
 }
 
+Tensor rand_like(
+    Tensor const& self,
+    c10::optional<c10::ScalarType> scale_type,
+    c10::optional<c10::Layout> layout,
+    c10::optional<c10::Device> device,
+    c10::optional<bool> pin_memory,
+    c10::optional<c10::MemoryFormat> memory_format) {
+  // Returns a tensor with the same size as input that is filled with random
+  // numbers from a uniform distribution on the interval [0,1)
+  return self.uniform_(0.0, 1.0 - kEpsilon).clone();
+}
+
 #ifdef USE_VULKAN_API
 
 TORCH_LIBRARY_IMPL(aten, Vulkan, m) {
   m.impl(TORCH_SELECTIVE_NAME("aten::uniform_"), TORCH_FN(uniform_));
+  m.impl(TORCH_SELECTIVE_NAME("aten::rand_like"), TORCH_FN(rand_like));
 }
 
 #endif /* USE_VULKAN_API */
