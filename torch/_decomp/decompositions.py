@@ -3732,11 +3732,8 @@ def arange_start(
 @register_decomposition(aten.take_along_dim)
 @out_wrapper()
 def take_along_dim(
-    a: torch.Tensor,
-    indices: torch.Tensor,
-    dim: Optional[int] = None
+    a: torch.Tensor, indices: torch.Tensor, dim: Optional[int] = None
 ) -> torch.Tensor:
-
     torch._check(
         a.ndim == indices.ndim,
         lambda: (
