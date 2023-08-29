@@ -19,6 +19,7 @@ from torch._prims_common.wrappers import (
     _safe_copy_out,
     out_wrapper,
 )
+from torch._refs import broadcast_to
 from torch.fx.experimental.symbolic_shapes import expect_true, guard_int
 from torch.utils._pytree import tree_flatten, tree_map
 
@@ -3726,6 +3727,47 @@ def arange_start(
     return aten.arange.start_step(
         start, end, 1, dtype=dtype, layout=layout, device=device, pin_memory=pin_memory
     )
+
+
+@register_decomposition(aten.take_along_dim)
+@out_wrapper()
+def take_along_dim(
+    a: torch.Tensor,
+    indices: torch.Tensor,
+    dim: Optional[int] = None
+) -> torch.Tensor:
+
+    torch._check(
+        a.ndim == indices.ndim,
+        lambda: (
+            "torch.take_along_dim(): input and indices should have the same "
+            f"number of dimensions, bug got {a.ndim} dimensions for input, and "
+            f"{indices.ndim} dimensions for indices"
+        ),
+    )
+
+    torch._check(
+        utils.is_integer_dtype(indices.dtype),
+        lambda: (
+            "torch.take_along_dim(): dtype of indices should be int but got "
+            f"{indices.dtype} instead"
+        ),
+    )
+
+    if dim is None:
+        return aten.gather(a.view(-1), 0, indices.view(-1))
+    else:
+        self_sizes = list(a.shape)
+        self_sizes[dim] = indices.size(dim)
+        broadcast_shape = utils.infer_size_shapes(self_sizes, indices.size())
+        indices_broadcast = broadcast_to(indices, broadcast_shape)
+
+        indices_sizes = list(indices.shape)
+        indices_sizes[dim] = a.size(dim)
+        broadcast_shape = utils.infer_size_shapes(indices_sizes, a.size())
+        self_broadcast = broadcast_to(a, broadcast_shape)
+
+        return aten.gather(self_broadcast, dim, indices_broadcast)
 
 
 @register_decomposition(aten.multi_margin_loss)
