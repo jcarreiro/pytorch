@@ -306,7 +306,11 @@ at::Tensor& mps_copy_(at::Tensor& dst, const at::Tensor& src, bool non_blocking)
     }
   } else {
     // dst.dim() can be smaller than src.dim() when scalars are copied
-    TORCH_CHECK(dst.numel() == 1, "Destination has ", dst.dim(), " dims, which is fewer than src ", src.dim());
+    TORCH_CHECK(dst.numel() == 1 && src.numel() == 1,
+                "Destination has ",
+                dst.dim(),
+                " dims, which is fewer than src ",
+                src.dim());
   }
 
   if (src.device().type() == at::kMPS && dst.device().type() == at::kCPU) {
