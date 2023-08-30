@@ -3,7 +3,10 @@
 #include <torch/csrc/dynamo/guards.h>
 #include <torch/csrc/utils/python_numbers.h>
 #include <torch/extension.h>
+#include <pybind11/pybind11.h>
 #include <sstream>
+
+namespace py = pybind11;
 
 namespace {
 
@@ -537,4 +540,43 @@ PyObject* torch_c_dynamo_guards_init() {
   }
 
   return m;
+}
+
+class GuardNode {
+public:
+  // virtual bool check(PyObject * value) = 0;
+  virtual bool check(py::object value) = 0;
+  virtual ~GuardNode() = default;
+};
+
+class TypeGuardNode: public GuardNode {
+public:
+  TypeGuardNode(py::object value) {
+    expected_type_ = Py_TYPE(py::cast<PyObject*>(value));
+  }
+  // bool check(PyObject* value) override {
+  bool check(py::object value) override {
+    return Py_TYPE(py::cast<PyObject*>(value)) == expected_type_;
+  }
+private:
+  PyTypeObject* expected_type_;
+};
+
+// TypeGuardNode* create_type_guard(PyObject* value) {
+//   return new TypeGuardNode(value);
+//   // return std::unique_ptr<TypeGuardNode>(new TypeGuardNode(value));
+// }
+
+// PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
+
+
+void torch_c_dynamo_new_guards_init(PyObject* dynamo_module) {
+  // Accessible in Python via torch._C._dynamo.new_guards
+  auto _dynamo = py::handle(dynamo_module).cast<py::module>();
+  auto m = _dynamo.def_submodule("new_guards");
+
+  m.doc() = "Guard Node system";
+  py::class_<TypeGuardNode>(m, "TypeGuardNode")
+    .def(py::init<py::object>())
+    .def("check", &TypeGuardNode::check);
 }
