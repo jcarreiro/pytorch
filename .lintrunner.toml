@@ -300,8 +300,6 @@ exclude_patterns = [
     '**/cuda/*pp',
     'c10/test/**',
     'third_party/**/*',
-    'third_party/fmt/include/fmt/core.h',
-    'torch/csrc/CudaIPCTypes.cpp',
     'torch/csrc/api/**',
     'torch/csrc/autograd/**',
     'torch/csrc/cuda/**',
